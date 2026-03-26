@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IgG4-RD 医療費自己負担シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --col-primary: #5c4033;
+            --col-primary-light: #f5ede8;
+            --col-accent: #a0522d;
+            --col-accent-light: #fdf0e8;
+            --col-surface: #ffffff;
+            --col-bg: #faf7f4;
+            --col-muted: #9c8880;
+            --col-border: #e8ddd6;
+            --col-text: #2c1a10;
+            --col-upl: #5c4033;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans JP', 'DM Sans', sans-serif;
+            background: var(--col-bg);
+            color: var(--col-text);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== HEADER ===== */
+        .app-header {
+            background: #ffffff;
+            border-bottom: 1px solid var(--col-border);
+            padding: 28px 20px 24px;
+        }
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--col-primary-light);
+            border: 1px solid #d9c5bc;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--col-primary);
+            margin-bottom: 14px;
+        }
+        .header-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--col-text);
+            line-height: 1.35;
+            margin-bottom: 6px;
+        }
+        .header-subtitle {
+            font-size: 11.5px;
+            color: var(--col-muted);
+            font-weight: 400;
+            line-height: 1.6;
+        }
+
+        /* ===== STICKY RESULT PANEL ===== */
+        .result-panel {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: #fdf5f0;
+            border-bottom: 1px solid #e8c8b8;
+            box-shadow: 0 3px 14px rgba(140,70,30,0.10);
+        }
+        .result-inner {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 12px 12px 16px;
+        }
+        .result-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px 0;
+            color: var(--col-muted);
+            font-size: 13px;
+        }
+        .period-tabs {
+            display: flex;
+            background: rgba(255,255,255,0.7);
+            border-radius: 10px;
+            padding: 3px;
+            margin-bottom: 14px;
+            border: 1px solid #d9c0b0;
+        }
+        .period-tab {
+            flex: 1;
+            padding: 7px 4px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #a07860;
+            white-space: nowrap;
+        }
+        .period-tab.active {
+            background: #fff;
+            color: var(--col-accent);
+            box-shadow: 0 1px 6px rgba(140,60,20,0.15);
+        }
+        .display-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+        .toggle-btn {
+            font-size: 11px;
+            font-weight: 600;
+            font-family: inherit;
+            color: var(--col-primary);
+            background: var(--col-primary-light);
+            border: none;
+            border-radius: 999px;
+            padding: 5px 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle-btn:hover { background: #ead8cf; }
+
+        /* Drug bars */
+        .drug-row { margin-bottom: 12px; }
+        .drug-row:last-child { margin-bottom: 0; }
+        .drug-row-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .drug-name-wrap {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+        .drug-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .drug-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--col-text);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .drug-tag {
+            font-size: 10px;
+            background: var(--col-bg);
+            border: 1px solid var(--col-border);
+            border-radius: 4px;
+            padding: 1px 5px;
+            color: var(--col-muted);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .drug-amount {
+            font-size: 14px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-left: 6px;
+        }
+        .drug-amount span {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--col-muted);
+            margin-left: 1px;
+        }
+        .bar-track {
+            background: rgba(255,255,255,0.65);
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+            border: 1px solid #d8baa8;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ===== STEP CARDS ===== */
+        .step-card {
+            background: var(--col-surface);
+            border: 1px solid var(--col-border);
+            border-radius: 16px;
+            padding: 20px 16px;
+            box-shadow: 0 2px 12px rgba(92,64,51,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        .step-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 4px; height: 100%;
+            background: linear-gradient(180deg, var(--col-primary), #8b5e52);
+            border-radius: 4px 0 0 4px;
+        }
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .step-num {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: var(--col-primary);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .step-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--col-primary);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .step-desc {
+            font-size: 11px;
+            color: var(--col-muted);
+            margin-top: 1px;
+        }
+
+        /* Input label */
+        .input-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--col-muted);
+            margin-bottom: 8px;
+            letter-spacing: 0.02em;
+        }
+        .input-group { margin-bottom: 20px; }
+        .input-group:last-child { margin-bottom: 0; }
+
+        /* Segmented buttons */
+        .seg-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .seg-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .seg-btn {
+            padding: 12px 6px;
+            border-radius: 10px;
+            border: 1.5px solid var(--col-border);
+            background: var(--col-bg);
+            color: var(--col-muted);
+            font-size: 12px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.18s;
+            text-align: center;
+            line-height: 1.3;
+            min-height: 44px;
+        }
+        .seg-btn:hover:not(.active) {
+            border-color: #c4a090;
+            background: var(--col-primary-light);
+        }
+        .seg-btn.active {
+            background: var(--col-primary);
+            border-color: var(--col-primary);
+            color: #fff;
+            font-weight: 700;
+            box-shadow: 0 2px 10px rgba(92,64,51,0.30);
+        }
+        .seg-btn-inner-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 400;
+            opacity: 0.75;
+            margin-top: 2px;
+        }
+
+        /* Select */
+        .styled-select {
+            width: 100%;
+            appearance: none;
+            background: var(--col-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239c8880' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center;
+            border: 1.5px solid var(--col-border);
+            border-radius: 10px;
+            padding: 13px 40px 13px 14px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--col-text);
+            outline: none;
+            transition: border-color 0.18s;
+            cursor: pointer;
+        }
+        .styled-select:focus { border-color: var(--col-primary); }
+        .styled-select.highlighted {
+            background-color: var(--col-accent-light);
+            border-color: #d4956a;
+        }
+        .styled-select.highlighted:focus { border-color: var(--col-accent); }
+
+        /* Toggle switch row */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--col-bg);
+            border-radius: 10px;
+            border: 1.5px solid var(--col-border);
+            cursor: pointer;
+            transition: border-color 0.18s;
+            margin-bottom: 8px;
+        }
+        .toggle-row:last-child { margin-bottom: 0; }
+        .toggle-row:hover { border-color: #c4a090; }
+        .toggle-row.checked {
+            background: var(--col-primary-light);
+            border-color: #b09080;
+        }
+        .toggle-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--col-text);
+        }
+        .toggle-label .toggle-sub {
+            display: block;
+            font-size: 11px;
+            color: var(--col-muted);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+        .toggle-switch {
+            width: 40px; height: 22px;
+            border-radius: 999px;
+            background: var(--col-border);
+            position: relative;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+        .toggle-switch.on { background: var(--col-primary); }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px; left: 3px;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .toggle-switch.on::after { transform: translateX(18px); }
+        input[type="checkbox"].hidden-check { display: none; }
+
+        /* Footer */
+        .app-footer {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px 20px 40px;
+            text-align: center;
+        }
+        .reset-btn {
+            font-size: 11px;
+            color: var(--col-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-decoration: underline;
+            font-family: inherit;
+            letter-spacing: 0.03em;
+        }
+        .footer-note {
+            font-size: 10px;
+            color: #c0a898;
+            line-height: 1.7;
+            margin-top: 12px;
+        }
+
+        /* Fade in */
+        .fade-in { animation: fadeIn 0.35s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+        /* Connector line between steps */
+        .step-connector {
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(to bottom, var(--col-border), transparent);
+            margin: 0 auto;
+        }
+
+        /* ===== 制度詳細ボタン ===== */
+        .ref-btn-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .ref-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            min-height: 48px;
+            padding: 10px 8px;
+            background: var(--col-primary-light);
+            border: 1.5px solid #d9c5bc;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            color: var(--col-primary);
+            cursor: pointer;
+            transition: background 0.18s, border-color 0.18s;
+            text-align: center;
+            line-height: 1.35;
+        }
+        .ref-btn:hover { background: #ead5ca; border-color: #c4a090; }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(44,26,16,0.45);
+            z-index: 200;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-sheet {
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 0 0 32px;
+        }
+        .modal-handle {
+            width: 36px; height: 4px;
+            background: #e0d0c8;
+            border-radius: 2px;
+            margin: 12px auto 8px;
+        }
+        .modal-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--col-primary);
+            padding: 8px 20px 16px;
+            border-bottom: 1px solid var(--col-border);
+        }
+        .modal-body {
+            padding: 16px 20px;
+        }
+        .modal-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--col-primary);
+            margin: 16px 0 8px;
+            padding-bottom: 4px;
+            border-bottom: 1.5px solid var(--col-primary-light);
+        }
+        .modal-section-title:first-child { margin-top: 0; }
+        .modal-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        .modal-table th {
+            background: var(--col-primary-light);
+            color: var(--col-primary);
+            font-weight: 700;
+            padding: 7px 8px;
+            text-align: center;
+            border: 1px solid #d9c5bc;
+        }
+        .modal-table td {
+            padding: 7px 8px;
+            border: 1px solid #e8ddd6;
+            text-align: center;
+            vertical-align: middle;
+            line-height: 1.5;
+        }
+        .modal-table tr:nth-child(even) td { background: var(--col-bg); }
+        .modal-close-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 32px;
+            background: var(--col-primary);
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        const App = () => {
+            const [params, setParams] = useState({
+                severity: null,
+                ageGroup: null,
+                nanbyoIncome: null,
+                kogakuIncome: null,
+                kogakuIncome70: null,
+                fukaKyufu: false,
+                jichitai: false,
+                displayType: 'year',
+                periodTab: 'after',
+                modal: null  // 'nanbyo' | 'kogaku' | 'kogaku70'
+            });
+
+            // ===== 計算ロジック =====
+            const calculateCost = () => {
+                const isHeavy = params.severity === 'heavy';
+
+                // 難病認定あり → nanbyoIncome が必要
+                if (isHeavy && !params.nanbyoIncome) return null;
+                // 難病認定なし → ageGroup が必要
+                if (!isHeavy && !params.ageGroup) return null;
+                // 認定なし・70歳未満 → kogakuIncome が必要
+                if (!isHeavy && params.ageGroup === 'under70' && !params.kogakuIncome) return null;
+                // 認定なし・70歳以上 → kogakuIncome70 が必要
+                if (!isHeavy && params.ageGroup === 'over70' && !params.kogakuIncome70) return null;
+                // 難病認定なしはそもそも重症度未選択は弾く
+                if (!params.severity) return null;
+
+                const nanbyoLimits    = { '80': 2500, '160': 5000, '370': 10000, '810': 20000, 'over': 30000 };
+                const nanbyoLongLimits= { '80': 2500, '160': 5000, '370': 5000,  '810': 10000, 'over': 20000 };
+
+                const getMonthlyFinal = (standardLimit) => {
+                    if (params.jichitai) return 0;
+                    let final = standardLimit;
+                    if (params.fukaKyufu) final = Math.min(standardLimit, 25000);
+                    return final;
+                };
+
+                // 70歳未満の高額療養費
+                const getKogakuLimit = (yakka) => {
+                    if (params.jichitai) return 0;
+                    if (!params.kogakuIncome) return 0;
+                    let limit = 0;
+                    switch(params.kogakuIncome) {
+                        case 'hikazei': limit = 35400; break;
+                        case '370':     limit = 57600; break;
+                        case '770':     limit = 80100  + (yakka - 267000) * 0.01; break;
+                        case '1160':    limit = 167400 + (yakka - 558000) * 0.01; break;
+                        case 'over':    limit = 252600 + (yakka - 842000) * 0.01; break;
+                    }
+                    return params.fukaKyufu ? Math.min(limit, 25000) : limit;
+                };
+
+                // 70歳以上の高額療養費
+                const getKogaku70Limit = (yakka) => {
+                    if (params.jichitai) return 0;
+                    if (!params.kogakuIncome70) return 0;
+                    let limit = 0;
+                    switch(params.kogakuIncome70) {
+                        case 'genwaku3': limit = 252600 + (yakka - 842000) * 0.01; break;
+                        case 'genwaku2': limit = 167400 + (yakka - 558000) * 0.01; break;
+                        case 'genwaku1': limit = 80100  + (yakka - 267000) * 0.01; break;
+                        case 'ippan':    limit = 57600;  break;  // 外来・入院世帯合算
+                        case 'teiso2':   limit = 24600;  break;
+                        case 'teiso1':   limit = 15000;  break;
+                    }
+                    return params.fukaKyufu ? Math.min(limit, 25000) : limit;
+                };
+
+                // ユプリズナ: 年2回投与（6ヶ月ごと）
+                const uplYakkaPerDose = 10485912;
+                let uplAnnual = 0;
+                let uplNote = "";
+
+                if (isHeavy) {
+                    // 難病認定あり: 難病助成（一般）、年2回投与
+                    uplAnnual = getMonthlyFinal(nanbyoLimits[params.nanbyoIncome]) * 2;
+                    uplNote = "難病助成";
+                } else if (params.ageGroup === 'under70') {
+                    // 認定なし・70歳未満: 高額療養費
+                    uplAnnual = getKogakuLimit(uplYakkaPerDose) * 2;
+                    uplNote = "高額療養費";
+                } else if (params.ageGroup === 'over70') {
+                    // 認定なし・70歳以上: 高額療養費（70歳以上）
+                    uplAnnual = getKogaku70Limit(uplYakkaPerDose) * 2;
+                    uplNote = "高額療養費(70↑)";
+                }
+
+                const format = (val) => Math.floor(val / 1000) * 1000;
+
+                return [
+                    {
+                        name: 'ユプリズナ',
+                        cost: format(uplAnnual),
+                        colorDot: '#5c4033',
+                        colorBar: 'linear-gradient(90deg, #5c4033, #9e6b5a)',
+                        amountColor: '#5c4033',
+                        note: uplNote
+                    }
+                ];
+            };
+
+            const results = useMemo(calculateCost, [params]);
+            const maxCost = results ? Math.max(...results.map(r => r.cost), 100000) : 100000;
+
+            const set = (key, val) => setParams(prev => ({ ...prev, [key]: val }));
+
+            // 重症度切り替え時に依存パラメータをリセット
+            const setSeverity = (val) => setParams(prev => ({
+                ...prev,
+                severity: val,
+                ageGroup: null,
+                nanbyoIncome: null,
+                kogakuIncome: null,
+                kogakuIncome70: null
+            }));
+
+            // 年齢区分切り替え時に所得リセット
+            const setAgeGroup = (val) => setParams(prev => ({
+                ...prev,
+                ageGroup: val,
+                kogakuIncome: null,
+                kogakuIncome70: null
+            }));
+
+            const isHeavy = params.severity === 'heavy';
+
+            return (
+                <div style={{ minHeight: '100vh', paddingBottom: '40px' }}>
+
+                    {/* ===== MODAL ===== */}
+                    {params.modal && (
+                        <div className="modal-overlay" onClick={() => set('modal', null)}>
+                            <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+                                <div className="modal-handle"/>
+                                {params.modal === 'nanbyo' && (
+                                    <>
+                                        <div className="modal-title">難病医療費助成 自己負担上限額（月額）</div>
+                                        <div className="modal-body">
+                                            <div className="modal-section-title">難病助成 所得区分と月額上限</div>
+                                            <table className="modal-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>所得区分</th>
+                                                        <th>一般（月額）</th>
+                                                        <th>高額かつ長期（月額）</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {[
+                                                        ['低所得Ⅰ（~80万円）','2,500円','2,500円'],
+                                                        ['低所得Ⅱ（~160万円）','5,000円','5,000円'],
+                                                        ['一般所得Ⅰ（~370万円）','10,000円','5,000円'],
+                                                        ['一般所得Ⅱ（~810万円）','20,000円','10,000円'],
+                                                        ['上位所得（810万円~）','30,000円','20,000円'],
+                                                    ].map(([a,b,c]) => (
+                                                        <tr key={a}><td>{a}</td><td>{b}</td><td>{c}</td></tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                            <p style={{fontSize:10,color:'#a08878',marginTop:8,lineHeight:1.6}}>
+                                                ※「高額かつ長期」は医療費総額が月50,000円超の月が年間6ヶ月以上の場合に適用
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+                                {params.modal === 'kogaku' && (
+                                    <>
+                                        <div className="modal-title">高額療養費制度 所得区分・上限額（70歳未満）</div>
+                                        <div className="modal-body">
+                                            <table className="modal-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>区分</th>
+                                                        <th>自己負担上限額（月額）</th>
+                                                        <th>多数該当</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {[
+                                                        ['ア（~1,160万円）','252,600円＋(医療費-842,000)×1%','140,100円'],
+                                                        ['イ（~770万円）','167,400円＋(医療費-558,000)×1%','93,000円'],
+                                                        ['ウ（~370万円）','80,100円＋(医療費-267,000)×1%','44,400円'],
+                                                        ['エ（一般）','57,600円','44,400円'],
+                                                        ['オ（非課税）','35,400円','24,600円'],
+                                                    ].map(([a,b,c]) => (
+                                                        <tr key={a}><td>{a}</td><td style={{textAlign:'left'}}>{b}</td><td>{c}</td></tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
+                                {params.modal === 'kogaku70' && (
+                                    <>
+                                        <div className="modal-title">高額療養費制度 所得区分・上限額（70歳以上）</div>
+                                        <div className="modal-body">
+                                            <div className="modal-section-title">外来（個人）・外来＋入院（世帯）の自己負担上限額</div>
+                                            <table className="modal-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>区分</th>
+                                                        <th>外来（個人）</th>
+                                                        <th>外来・入院（世帯）</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {[
+                                                        ['現役並みⅢ（83万円以上）','—','252,600円＋(医療費-842,000)×1%《多数:140,100円》'],
+                                                        ['現役並みⅡ（53〜79万円）','—','167,400円＋(医療費-558,000)×1%《多数:93,000円》'],
+                                                        ['現役並みⅠ（28〜50万円）','—','80,100円＋(医療費-267,000)×1%《多数:44,400円》'],
+                                                        ['一般（26万円以下）','18,000円（年間144,000円上限）','57,600円《多数:44,400円》'],
+                                                        ['低所得Ⅱ','8,000円','24,600円'],
+                                                        ['低所得Ⅰ','8,000円','15,000円'],
+                                                    ].map(([a,b,c]) => (
+                                                        <tr key={a}><td style={{textAlign:'left',fontSize:10}}>{a}</td><td>{b}</td><td style={{textAlign:'left',fontSize:10}}>{c}</td></tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                            <p style={{fontSize:10,color:'#a08878',marginTop:8,lineHeight:1.6}}>
+                                                ※ 現役並み所得者は標準報酬月額または課税所得による区分。<br/>
+                                                ※ 一般の外来は個人ごとに18,000円/月（年間144,000円上限）が適用。
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+                                <button className="modal-close-btn" onClick={() => set('modal', null)}>閉じる</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== HEADER ===== */}
+                    <header className="app-header">
+                        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+                            <div className="header-badge">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                医療費概算ツール
+                            </div>
+                            <div className="header-title">
+                                IgG4-RD 自己負担額シミュレーター
+                            </div>
+                            <div className="header-subtitle">
+                                指定難病助成制度・高額療養費・各種助成を考慮した年間自己負担の概算（ユプリズナ）
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* ===== STICKY RESULT PANEL ===== */}
+                    <div className="result-panel">
+                        <div className="result-inner">
+                            {!results ? (
+                                <div className="result-empty">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9c8880" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    条件をすべて選択すると計算結果が表示されます
+                                </div>
+                            ) : (
+                                <div className="fade-in">
+                                    <div className="period-tabs">
+                                        {[['first','1年目（待機期間あり）'],['after','2年目以降']].map(([v, label]) => (
+                                            <button key={v} className={`period-tab ${params.periodTab === v ? 'active' : ''}`}
+                                                onClick={() => set('periodTab', v)}>{label}</button>
+                                        ))}
+                                    </div>
+                                    <div className="display-toggle">
+                                        <button className="toggle-btn" onClick={() => set('displayType', params.displayType === 'year' ? 'month' : 'year')}>
+                                            {params.displayType === 'year' ? '月額換算で表示' : '年間合計で表示'}
+                                        </button>
+                                    </div>
+                                    {results.map((r) => {
+                                        const val = params.displayType === 'year' ? r.cost : Math.floor(r.cost / 12);
+                                        const unit = params.displayType === 'year' ? '円/年' : '円/月';
+                                        return (
+                                            <div key={r.name} className="drug-row">
+                                                <div className="drug-row-header">
+                                                    <div className="drug-name-wrap">
+                                                        <div className="drug-dot" style={{ background: r.colorDot }}/>
+                                                        <span className="drug-name">{r.name}</span>
+                                                        <span className="drug-tag">{r.note}</span>
+                                                    </div>
+                                                    <div className="drug-amount" style={{ color: r.amountColor }}>
+                                                        約{val.toLocaleString()}<span>{unit}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="bar-track">
+                                                    <div className="bar-fill" style={{
+                                                        width: `${(r.cost / maxCost) * 100}%`,
+                                                        background: r.colorBar,
+                                                    }}/>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ===== MAIN FORM ===== */}
+                    <main style={{ maxWidth: 600, margin: '0 auto', padding: '20px 12px 0' }}>
+
+                        {/* STEP 1: 難病認定 */}
+                        <div className="step-card">
+                            <div className="step-header">
+                                <div className="step-num">1</div>
+                                <div>
+                                    <div className="step-title">難病認定の有無</div>
+                                    <div className="step-desc">IgG4関連疾患の難病認定状況を選択してください</div>
+                                </div>
+                            </div>
+                            <div className="seg-grid-2">
+                                {[
+                                    { v: 'heavy', label: '難病認定あり', sub: '難病助成の適用対象' },
+                                    { v: 'light', label: '難病認定なし', sub: '高額療養費制度を適用' }
+                                ].map(({ v, label, sub }) => (
+                                    <button key={v}
+                                        className={`seg-btn ${params.severity === v ? 'active' : ''}`}
+                                        onClick={() => setSeverity(v)}>
+                                        {label}
+                                        <span className="seg-btn-inner-label">{sub}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="step-connector"/>
+
+                        {/* STEP 2: 年齢区分（認定なしのみ） */}
+                        {params.severity === 'light' && (
+                            <>
+                                <div className="step-card fade-in">
+                                    <div className="step-header">
+                                        <div className="step-num">2</div>
+                                        <div>
+                                            <div className="step-title">年齢区分</div>
+                                            <div className="step-desc">高額療養費の区分が異なります</div>
+                                        </div>
+                                    </div>
+                                    <div className="seg-grid-2">
+                                        {[
+                                            { v: 'under70', label: '70歳未満', sub: '区分ア〜オ' },
+                                            { v: 'over70',  label: '70歳以上', sub: '現役並み・一般・低所得' }
+                                        ].map(({ v, label, sub }) => (
+                                            <button key={v}
+                                                className={`seg-btn ${params.ageGroup === v ? 'active' : ''}`}
+                                                onClick={() => setAgeGroup(v)}>
+                                                {label}
+                                                <span className="seg-btn-inner-label">{sub}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="step-connector"/>
+                            </>
+                        )}
+
+                        {/* STEP 2/3: 所得区分 */}
+                        <div className="step-card">
+                            <div className="step-header">
+                                <div className="step-num">{params.severity === 'light' ? '3' : '2'}</div>
+                                <div>
+                                    <div className="step-title">所得区分</div>
+                                    <div className="step-desc">医療費助成の上限額算定に使用します</div>
+                                </div>
+                            </div>
+
+                            {/* 難病認定あり */}
+                            {isHeavy && (
+                                <div className="input-group">
+                                    <label className="input-label">難病医療費助成の所得区分</label>
+                                    <select className="styled-select" value={params.nanbyoIncome || ''} onChange={e => set('nanbyoIncome', e.target.value)}>
+                                        <option value="" disabled>選択してください</option>
+                                        <option value="80">低所得Ⅰ（市区町村民税非課税 / 収入 ~80万円）</option>
+                                        <option value="160">低所得Ⅱ（市区町村民税非課税 / 収入 ~160万円）</option>
+                                        <option value="370">一般所得Ⅰ（課税 / 年収目安 ~370万円）</option>
+                                        <option value="810">一般所得Ⅱ（課税 / 年収目安 ~810万円）</option>
+                                        <option value="over">上位所得（年収 810万円以上）</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* 認定なし・70歳未満 */}
+                            {!isHeavy && params.ageGroup === 'under70' && (
+                                <div className="input-group fade-in">
+                                    <label className="input-label" style={{ color: '#a07040' }}>
+                                        高額療養費制度の所得区分（70歳未満）
+                                    </label>
+                                    <select className="styled-select highlighted" value={params.kogakuIncome || ''} onChange={e => set('kogakuIncome', e.target.value)}>
+                                        <option value="" disabled>選択してください</option>
+                                        <option value="hikazei">区分オ：住民税非課税世帯</option>
+                                        <option value="370">区分ウ：年収目安 ~370万円</option>
+                                        <option value="770">区分イ：年収目安 ~770万円</option>
+                                        <option value="1160">区分ア：年収目安 ~1,160万円</option>
+                                        <option value="over">現役並みⅢ：年収 1,160万円以上</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* 認定なし・70歳以上 */}
+                            {!isHeavy && params.ageGroup === 'over70' && (
+                                <div className="input-group fade-in">
+                                    <label className="input-label" style={{ color: '#a07040' }}>
+                                        高額療養費制度の所得区分（70歳以上）
+                                    </label>
+                                    <select className="styled-select highlighted" value={params.kogakuIncome70 || ''} onChange={e => set('kogakuIncome70', e.target.value)}>
+                                        <option value="" disabled>選択してください</option>
+                                        <option value="genwaku3">現役並みⅢ（標準報酬月額83万円以上）</option>
+                                        <option value="genwaku2">現役並みⅡ（標準報酬月額53〜79万円）</option>
+                                        <option value="genwaku1">現役並みⅠ（標準報酬月額28〜50万円）</option>
+                                        <option value="ippan">一般（標準報酬月額26万円以下）</option>
+                                        <option value="teiso2">低所得Ⅱ（住民税非課税）</option>
+                                        <option value="teiso1">低所得Ⅰ（住民税非課税・低所得）</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* 未選択時のプレースホルダー */}
+                            {!params.severity && (
+                                <p style={{fontSize:12,color:'#c0a898',textAlign:'center',padding:'8px 0'}}>
+                                    先にSTEP 1の認定状況を選択してください
+                                </p>
+                            )}
+                            {params.severity === 'light' && !params.ageGroup && (
+                                <p style={{fontSize:12,color:'#c0a898',textAlign:'center',padding:'8px 0'}}>
+                                    先にSTEP 2の年齢区分を選択してください
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="step-connector"/>
+
+                        {/* STEP 3/4: その他の助成 */}
+                        <div className="step-card">
+                            <div className="step-header">
+                                <div className="step-num">{params.severity === 'light' ? '4' : '3'}</div>
+                                <div>
+                                    <div className="step-title">その他の助成</div>
+                                    <div className="step-desc">加入している給付制度にチェックしてください</div>
+                                </div>
+                            </div>
+                            {[
+                                {
+                                    key: 'fukaKyufu',
+                                    label: '付加給付あり',
+                                    sub: '健保組合の独自給付 / 上限 25,000円/月'
+                                },
+                                {
+                                    key: 'jichitai',
+                                    label: '自治体独自助成あり',
+                                    sub: '障がい者手帳、ひとり親など'
+                                }
+                            ].map(({ key, label, sub }) => (
+                                <label key={key}
+                                    className={`toggle-row ${params[key] ? 'checked' : ''}`}
+                                    onClick={() => set(key, !params[key])}>
+                                    <div className="toggle-label">
+                                        {label}
+                                        <span className="toggle-sub">{sub}</span>
+                                    </div>
+                                    <div className={`toggle-switch ${params[key] ? 'on' : ''}`}/>
+                                </label>
+                            ))}
+                        </div>
+
+                    </main>
+
+                    {/* ===== FOOTER ===== */}
+                    <div className="app-footer">
+                        <div className="ref-btn-row">
+                            <button className="ref-btn" onClick={() => set('modal', 'nanbyo')}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                難病医療費助成<br/>自己負担上限額
+                            </button>
+                            <button className="ref-btn" onClick={() => set('modal', 'kogaku')}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                高額療養費<br/>70歳未満 区分表
+                            </button>
+                            <button className="ref-btn" onClick={() => set('modal', 'kogaku70')} style={{gridColumn:'1/-1'}}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                高額療養費 70歳以上 区分表
+                            </button>
+                        </div>
+                        <button className="reset-btn" onClick={() => location.reload()}>
+                            入力内容をリセット
+                        </button>
+                        <div className="footer-note">
+                            本ツールは概算値の提示を目的としており、実際の支払額は処方内容・<br/>
+                            各自治体の規定・加入保険組合の規定により異なります。
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
