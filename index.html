@@ -828,14 +828,14 @@
                             <div className="step-header">
                                 <div className="step-num">1</div>
                                 <div>
-                                    <div className="step-title">難病認定の有無</div>
-                                    <div className="step-desc">IgG4関連疾患の難病認定状況を選択してください</div>
+                                    <div className="step-title">重症認定の有無</div>
+                                    <div className="step-desc">IgG4関連疾患の重症認定状況を選択してください</div>
                                 </div>
                             </div>
                             <div className="seg-grid-2">
                                 {[
-                                    { v: 'heavy', label: '難病認定あり', sub: '難病助成の適用対象' },
-                                    { v: 'light', label: '難病認定なし', sub: '高額療養費制度を適用' }
+                                    { v: 'heavy', label: '重症認定あり', sub: '難病助成の適用対象' },
+                                    { v: 'light', label: '重症以外',     sub: '高額療養費制度を適用' }
                                 ].map(({ v, label, sub }) => (
                                     <button key={v}
                                         className={`seg-btn ${params.severity === v ? 'active' : ''}`}
